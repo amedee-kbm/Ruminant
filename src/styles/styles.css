@@ -1,18 +1,3 @@
-body {
-  background-color: rgb(74, 94, 74);
-}
-.header {
-  display: flex;
-  height: 45px;
-  flex-direction: row;
-  justify-content: space-between;
-}
-.folder {
-  display: flex;
-  flex-direction: row;
-  justify-content: flex-start;
-}
-
 /*
 .card {
   height: 500px;

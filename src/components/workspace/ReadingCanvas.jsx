@@ -1,17 +1,26 @@
 import { useState, useEffect, useRef } from 'react'
 import { Box, HStack, Text, Badge, Button, Spinner } from '@chakra-ui/react'
 import { BookOpen, Check } from 'lucide-react'
-import { ReactReader } from 'react-reader'
+import { EpubViewer } from 'react-epub-viewer'
 import supabase from '../../supabaseClient'
+import ErrorBoundary from './ErrorBoundary'
+
+// Global error logger
+const logError = (context, error, additionalInfo = {}) => {
+  console.error(`[ReadingCanvas Error - ${context}]`, {
+    error,
+    errorMessage: error?.message,
+    errorStack: error?.stack,
+    ...additionalInfo,
+    timestamp: new Date().toISOString(),
+  })
+}
 
 const ReadingCanvas = ({
   scheme,
   onAddReflection,
   onMarkDone,
-  onPrevious,
-  onNext,
-  hasPrevious = false,
-  hasNext = false,
+  // Removed onPrevious, onNext, hasPrevious, hasNext - using built-in navigation
   currentChapter,
   book,
   onAddQuestion,
@@ -22,42 +31,91 @@ const ReadingCanvas = ({
   const [epubUrl, setEpubUrl] = useState(null)
   const [location, setLocation] = useState(null)
   const [toc, setToc] = useState([])
-  const renditionRef = useRef(null)
+  const [viewerReady, setViewerReady] = useState(false)
+  const viewerRef = useRef(null)
+
+  // Set up global error handlers
+  useEffect(() => {
+    // Catch unhandled promise rejections
+    const handleUnhandledRejection = (event) => {
+      logError('Unhandled Promise Rejection', event.reason, {
+        promise: event.promise,
+      })
+    }
+
+    // Catch unhandled errors
+    const handleError = (event) => {
+      logError('Global Error', event.error || new Error(event.message), {
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+        message: event.message,
+      })
+    }
+
+    window.addEventListener('error', handleError)
+    window.addEventListener('unhandledrejection', handleUnhandledRejection)
+
+    // Log all console errors related to EPUB
+    const originalError = console.error
+    const enhancedError = (...args) => {
+      originalError.apply(console, args)
+      const errorString = args[0]?.toString() || ''
+      if (
+        errorString.includes('react-epub-viewer') ||
+        errorString.includes('EpubViewer') ||
+        errorString.includes('epub') ||
+        errorString.includes('epubjs')
+      ) {
+        console.error('[EPUB Viewer Error]', ...args)
+      }
+    }
+    console.error = enhancedError
+
+    return () => {
+      window.removeEventListener('error', handleError)
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection)
+      console.error = originalError
+    }
+  }, [])
 
   // Download EPUB and create blob URL
   useEffect(() => {
     const loadEpub = async () => {
-      if (!book?.epub_path) {
-        setEpubUrl(null)
-        return
-      }
-
-      setLoading(true)
-      setError(null)
-
       try {
-        // Download EPUB file from storage
-        const { data: epubBlob, error: downloadError } = await supabase.storage
-          .from('books')
-          .download(book.epub_path)
+        console.log('[ReadingCanvas] Starting EPUB load', {
+          bookPath: book?.epub_path,
+          bookId: book?.id,
+        })
 
-        if (downloadError || !epubBlob) {
-          throw new Error(`Failed to download EPUB: ${downloadError?.message || 'Unknown error'}`)
+        if (!book?.epub_path) {
+          console.warn('[ReadingCanvas] No epub_path found', { book })
+          setEpubUrl(null)
+          return
         }
 
-        // Create blob URL for react-reader
-        const blobUrl = URL.createObjectURL(epubBlob)
-        setEpubUrl(blobUrl)
+        setLoading(true)
+        setError(null)
+
+        console.log('[ReadingCanvas] Getting public URL from storage...')
+        // Get public URL from Supabase storage (books are now publicly accessible)
+        const { data: urlData } = supabase.storage.from('books').getPublicUrl(book.epub_path)
+
+        if (!urlData?.publicUrl) {
+          logError('EPUB URL', new Error('No public URL returned'), { bookPath: book.epub_path })
+          throw new Error('Failed to get public URL for EPUB')
+        }
+
+        const publicUrl = urlData.publicUrl
+        console.log('[ReadingCanvas] Got public URL', {
+          publicUrl,
+          bookPath: book.epub_path,
+        })
+
+        setEpubUrl(publicUrl)
         setLoading(false)
-
-        // Cleanup function
-        return () => {
-          if (blobUrl) {
-            URL.revokeObjectURL(blobUrl)
-          }
-        }
       } catch (err) {
-        console.error('Error loading EPUB:', err)
+        logError('EPUB Load', err, { bookPath: book?.epub_path, bookId: book?.id })
         setError(err.message || 'Failed to load EPUB')
         setLoading(false)
       }
@@ -66,113 +124,89 @@ const ReadingCanvas = ({
     loadEpub()
   }, [book?.epub_path])
 
-  // Navigate to chapter when currentChapter changes
-  useEffect(() => {
-    if (currentChapter && toc.length > 0) {
-      // Find the chapter in TOC by matching href/locator
-      const findChapterInToc = (items, targetLocator) => {
-        if (!targetLocator) return null
-        
-        // Normalize locator for comparison (remove whitespace, hash fragments)
-        const normalize = (str) => str?.replace(/\s+/g, '').replace(/\n/g, '').split('#')[0].toLowerCase().trim()
-        const normalizedTarget = normalize(targetLocator)
-        
-        for (const item of items) {
-          if (item.href) {
-            const normalizedHref = normalize(item.href)
-            if (normalizedHref === normalizedTarget || 
-                normalizedHref.includes(normalizedTarget) || 
-                normalizedTarget.includes(normalizedHref)) {
-              return item
-            }
-          }
-          if (item.subitems) {
-            const found = findChapterInToc(item.subitems, targetLocator)
-            if (found) return found
-          }
-        }
-        return null
-      }
-
-      const chapterInToc = findChapterInToc(toc, currentChapter.locator)
-      if (chapterInToc && chapterInToc.href) {
-        // Use the href from TOC to navigate - react-reader will convert to CFI
-        console.log('Navigating to chapter from TOC:', chapterInToc.href)
-        setLocation(chapterInToc.href)
-      } else if (currentChapter.locator) {
-        // Fallback: use the locator directly
-        console.log('Navigating using locator directly:', currentChapter.locator)
-        setLocation(currentChapter.locator)
-      }
-    }
-  }, [currentChapter?.id, toc, currentChapter?.locator])
+  // Removed custom chapter navigation - using react-epub-viewer's built-in navigation UI
+  // The viewer will handle all navigation through its built-in controls
 
   // Handle TOC changes - extract chapters and pass to parent
+  // tocChanged receives Toc[] where Toc = { label: string, href: string }
   const handleTocChange = (tocData) => {
-    console.log('TOC changed from react-reader:', tocData)
-    setToc(tocData || [])
-
-    // Extract chapters from TOC and pass to parent
-    // react-reader's TOC structure matches epubjs: { label, href, subitems }
-    if (tocData && onChaptersExtracted && tocData.length > 0) {
-      const extractChapters = (items, index = { value: 0 }, parentTitle = '') => {
-        const chapters = []
-        for (const item of items) {
-          // Only include items with hrefs (actual navigable content)
-          if (item.href) {
-            const title = item.label || `Chapter ${index.value + 1}`
-            chapters.push({
-              chapter_index: index.value++,
-              title: title.trim(),
-              locator: item.href.trim(), // Clean whitespace
-            })
-          }
-          // Recursively process subitems
-          if (item.subitems && item.subitems.length > 0) {
-            chapters.push(...extractChapters(item.subitems, index, item.label))
-          }
-        }
-        return chapters
-      }
-
-      const chapters = extractChapters(tocData)
-      console.log(`Extracted ${chapters.length} chapters from react-reader TOC`)
-      if (chapters.length > 0) {
-        onChaptersExtracted(chapters)
-      }
-    }
-  }
-
-  // Handle location changes
-  const handleLocationChange = (epubcfi) => {
-    console.log('Location changed:', epubcfi)
-    setLocation(epubcfi)
-  }
-
-  // Handle text selection for questions
-  const handleSelection = (cfiRange, contents) => {
-    if (!onAddQuestion) return
-
     try {
-      const selection = contents.window.getSelection()
-      const selectedText = selection.toString().trim()
+      console.log('[ReadingCanvas] TOC changed from react-epub-viewer:', tocData)
+      setToc(tocData || [])
 
-      if (selectedText && selectedText.length > 0) {
-        const questionText = prompt(
-          `Create a question from this highlight:\n\n"${selectedText}"\n\nEnter your question:`
+      // Viewer is ready when TOC is loaded
+      if (tocData && tocData.length > 0 && !viewerReady) {
+        console.log('[ReadingCanvas] Viewer is now ready', { tocCount: tocData.length })
+        setViewerReady(true)
+      }
+
+      // Extract chapters from TOC and pass to parent
+      // react-epub-viewer's TOC structure: Toc[] = [{ label, href }, ...]
+      if (tocData && onChaptersExtracted && tocData.length > 0) {
+        const chapters = tocData.map((tocItem, index) => ({
+          chapter_index: index,
+          title: tocItem.label?.trim() || `Chapter ${index + 1}`,
+          locator: tocItem.href?.trim() || '',
+        }))
+
+        console.log(
+          `[ReadingCanvas] Extracted ${chapters.length} chapters from react-epub-viewer TOC`,
+          chapters
         )
-        if (questionText && questionText.trim()) {
-          onAddQuestion(questionText.trim(), selectedText)
+        if (chapters.length > 0) {
+          try {
+            onChaptersExtracted(chapters)
+          } catch (err) {
+            logError('onChaptersExtracted callback', err, { chapters })
+          }
         }
       }
     } catch (err) {
-      console.warn('Error handling text selection:', err)
+      logError('handleTocChange', err, { tocData })
     }
   }
 
+  // Handle page changes
+  // pageChanged receives a Page object: { chapterName, currentPage, totalPage, startCfi, endCfi, base }
+  const handlePageChange = (page) => {
+    try {
+      console.log('[ReadingCanvas] Page changed:', page)
+      if (page?.startCfi) {
+        setLocation(page.startCfi)
+        console.log('[ReadingCanvas] Location updated to:', page.startCfi)
+      }
+    } catch (err) {
+      logError('handlePageChange', err, { page })
+    }
+  }
+
+  // Removed handleLocationChange - EpubViewer doesn't have locationChanged callback
+  // Location tracking is handled via pageChanged callback
+
+  // Log render state - MUST be before any conditional returns (Rules of Hooks)
+  useEffect(() => {
+    console.log('[ReadingCanvas] Render state:', {
+      loading,
+      error,
+      hasEpubUrl: !!epubUrl,
+      viewerReady,
+      tocCount: toc.length,
+      currentChapter: currentChapter?.title,
+      hasBook: !!book,
+    })
+  }, [loading, error, epubUrl, viewerReady, toc.length, currentChapter?.title, book])
+
   if (loading) {
     return (
-      <Box flex="1" borderRadius="lg" bg={scheme.canvasBg} p={6} display="flex" alignItems="center" justifyContent="center">
+      <Box
+        flex="1"
+        borderRadius="lg"
+        bg={scheme.canvasBg}
+        p={6}
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+      >
         <Spinner size="lg" color={scheme.accent} />
       </Box>
     )
@@ -180,7 +214,16 @@ const ReadingCanvas = ({
 
   if (error) {
     return (
-      <Box flex="1" borderRadius="lg" bg={scheme.canvasBg} p={6} display="flex" alignItems="center" justifyContent="center" flexDirection="column">
+      <Box
+        flex="1"
+        borderRadius="lg"
+        bg={scheme.canvasBg}
+        p={6}
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+        flexDirection="column"
+      >
         <Text color="red.500" mb={4}>
           Error: {error}
         </Text>
@@ -190,7 +233,15 @@ const ReadingCanvas = ({
 
   if (!epubUrl) {
     return (
-      <Box flex="1" borderRadius="lg" bg={scheme.canvasBg} p={6} display="flex" alignItems="center" justifyContent="center">
+      <Box
+        flex="1"
+        borderRadius="lg"
+        bg={scheme.canvasBg}
+        p={6}
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+      >
         <Text color={scheme.placeholderText} opacity={0.7}>
           No EPUB file available
         </Text>
@@ -199,115 +250,157 @@ const ReadingCanvas = ({
   }
 
   return (
-    <Box flex="1" borderRadius="lg" bg={scheme.canvasBg} p={6} position="relative" display="flex" flexDirection="column" overflow="hidden">
-      <HStack mb={4} spacing={3}>
-        <Box color={scheme.primaryText} display="inline-flex">
-          <BookOpen size={18} />
-        </Box>
-        <Text fontWeight="semibold" color={scheme.primaryText}>
-          {currentChapter?.title || 'Reading canvas'}
-        </Text>
-        <Badge colorScheme="blue">SQ3R · Read</Badge>
-      </HStack>
-
+    <ErrorBoundary>
       <Box
         flex="1"
-        border={scheme.placeholderBorder}
-        borderRadius="md"
-        overflow="hidden"
-        position="relative"
-        minHeight="400px"
+        borderRadius="lg"
         bg={scheme.canvasBg}
-        height="100%"
+        p={6}
+        position="relative"
+        display="flex"
+        flexDirection="column"
+        overflow="hidden"
       >
-        {epubUrl && (
-          <ReactReader
-            url={epubUrl}
-            location={location}
-            locationChanged={handleLocationChange}
-            tocChanged={handleTocChange}
-            showToc={false}
-            readerStyles={{
-              width: '100%',
-              height: '100%',
-            }}
-            epubViewStyles={{
-              width: '100%',
-              height: '100%',
-            }}
-            getRendition={(rendition) => {
-              renditionRef.current = rendition
-              // Apply theme colors
-              rendition.themes.default({
-                body: {
-                  color: scheme.primaryText,
-                  background: scheme.canvasBg,
-                },
-              })
-              // Handle text selection
-              rendition.on('selected', handleSelection)
-            }}
-            epubOptions={{
-              openAs: 'epub',
-            }}
-            epubInitOptions={{
-              openAs: 'epub',
-            }}
-          />
-        )}
-      </Box>
-
-      <HStack spacing={3} mt={4} justify="space-between">
-        <HStack spacing={2}>
-          <Badge colorScheme="yellow">Survey</Badge>
-          <Badge colorScheme="green">Question</Badge>
-          <Badge colorScheme="purple">Recite</Badge>
-          <Badge colorScheme="teal">Review</Badge>
+        <HStack mb={4} spacing={3}>
+          <Box color={scheme.primaryText} display="inline-flex">
+            <BookOpen size={18} />
+          </Box>
+          <Text fontWeight="semibold" color={scheme.primaryText}>
+            {currentChapter?.title || 'Reading canvas'}
+          </Text>
+          <Badge colorScheme="blue">SQ3R · Read</Badge>
         </HStack>
-        <HStack spacing={2}>
+
+        <Box
+          flex="1"
+          border={scheme.placeholderBorder}
+          borderRadius="md"
+          overflow="hidden"
+          position="relative"
+          minHeight="400px"
+          bg={scheme.canvasBg}
+          height="100%"
+          display="flex"
+          flexDirection="column"
+        >
+          {epubUrl && (
+            <Box width="100%" height="100%" flex="1" position="relative">
+              {(() => {
+                try {
+                  console.log('[ReadingCanvas] Rendering EpubViewer', {
+                    epubUrl,
+                    hasRef: !!viewerRef.current,
+                    viewerReady,
+                    scheme: scheme.id,
+                  })
+
+                  return (
+                    <EpubViewer
+                      ref={(ref) => {
+                        console.log('[ReadingCanvas] EpubViewer ref callback', { ref: !!ref })
+                        viewerRef.current = ref
+                        if (ref) {
+                          console.log('[ReadingCanvas] Viewer ref methods available:', {
+                            hasPrevPage: typeof ref.prevPage === 'function',
+                            hasNextPage: typeof ref.nextPage === 'function',
+                            hasSetLocation: typeof ref.setLocation === 'function',
+                          })
+                        }
+                      }}
+                      url={epubUrl}
+                      epubFileOptions={{
+                        openAs: 'epub',
+                      }}
+                      tocChanged={handleTocChange}
+                      pageChanged={handlePageChange}
+                      selectionChanged={(cfiRange, contents) => {
+                        try {
+                          console.log('[ReadingCanvas] Selection changed', {
+                            cfiRange,
+                            hasContents: !!contents,
+                          })
+                          // Handle text selection for questions
+                          // selectionChanged receives: (cfiRange: string, contents: Contents)
+                          if (!onAddQuestion) return
+                          const selection =
+                            contents?.window?.getSelection?.() || window.getSelection()
+                          const selectedText = selection.toString().trim()
+                          if (selectedText && selectedText.length > 0) {
+                            const questionText = prompt(
+                              `Create a question from this highlight:\n\n"${selectedText}"\n\nEnter your question:`
+                            )
+                            if (questionText && questionText.trim()) {
+                              onAddQuestion(questionText.trim(), selectedText)
+                            }
+                          }
+                        } catch (err) {
+                          logError('selectionChanged', err, { cfiRange, hasContents: !!contents })
+                        }
+                      }}
+                      bookChanged={(book) => {
+                        console.log('[ReadingCanvas] Book changed', { book: !!book })
+                      }}
+                      rendtionChanged={(rendition) => {
+                        console.log('[ReadingCanvas] Rendition changed', { rendition: !!rendition })
+                      }}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        backgroundColor: scheme.canvasBg,
+                        color: scheme.primaryText,
+                      }}
+                      epubOptions={{
+                        flow: 'paginated',
+                        allowPopups: true,
+                        allowScriptedContent: true,
+                      }}
+                    />
+                  )
+                } catch (err) {
+                  logError('EpubViewer Render', err, { epubUrl })
+                  return (
+                    <Box p={4} color="red.500">
+                      <Text>Error rendering viewer: {err.message}</Text>
+                    </Box>
+                  )
+                }
+              })()}
+            </Box>
+          )}
+        </Box>
+
+        <HStack spacing={3} mt={4} justify="flex-start">
+          {/* Removed custom navigation buttons - using react-epub-viewer's built-in navigation */}
+          <HStack spacing={2}>
+            <Badge colorScheme="yellow">Survey</Badge>
+            <Badge colorScheme="green">Question</Badge>
+            <Badge colorScheme="purple">Recite</Badge>
+            <Badge colorScheme="teal">Review</Badge>
+          </HStack>
+        </HStack>
+        <HStack spacing={4} mt={4}>
           <Button
-            size="sm"
-            variant="ghost"
-            onClick={onPrevious}
+            flex="1"
+            variant="outline"
+            onClick={onAddReflection}
             color={scheme.primaryText}
-            isDisabled={!hasPrevious}
+            borderColor={scheme.chapterBorder}
           >
-            ← Previous
+            Add Reflection
           </Button>
           <Button
-            size="sm"
+            flex="1"
+            leftIcon={<Check size={16} />}
             bg={scheme.accent}
             _hover={{ bg: scheme.accentHover }}
             color={scheme.id === 'clean' ? 'white' : 'black'}
-            onClick={onNext}
-            isDisabled={!hasNext}
+            onClick={onMarkDone}
           >
-            Next →
+            Mark chapter done
           </Button>
         </HStack>
-      </HStack>
-      <HStack spacing={4} mt={4}>
-        <Button
-          flex="1"
-          variant="outline"
-          onClick={onAddReflection}
-          color={scheme.primaryText}
-          borderColor={scheme.chapterBorder}
-        >
-          Add Reflection
-        </Button>
-        <Button
-          flex="1"
-          leftIcon={<Check size={16} />}
-          bg={scheme.accent}
-          _hover={{ bg: scheme.accentHover }}
-          color={scheme.id === 'clean' ? 'white' : 'black'}
-          onClick={onMarkDone}
-        >
-          Mark chapter done
-        </Button>
-      </HStack>
-    </Box>
+      </Box>
+    </ErrorBoundary>
   )
 }
 

@@ -7,6 +7,7 @@ import { uploadBook } from '../lib/bookUploadService'
 import { cleanTheme } from '../constants/theme'
 import { sampleBooks } from '../constants/sampleData'
 import {
+  AspectRatio,
   Badge,
   Box,
   Button,
@@ -123,7 +124,7 @@ const Home = () => {
         </HStack>
       </Box>
 
-      <Box maxW="1200px" mx="auto" px={8} py={8} flex="1" width="100%">
+      <Box maxW="2400px" mx="auto" px={8} py={8} flex="1" width="100%">
         <VStack align="stretch" spacing={6}>
           <HStack justify="space-between" align="flex-end">
             <Box>
@@ -150,55 +151,40 @@ const Home = () => {
             )}
           </HStack>
 
-          <SimpleGrid columns={{ base: 2, sm: 3, md: 4, lg: 6 }} spacing={5} alignItems="stretch">
+          <SimpleGrid minChildWidth="180px" spacing={6}>
             {booksToShow.map((book) => (
               <Box
                 key={book.id || book.title}
-                border="1px solid rgba(41,41,41,0.08)"
-                borderRadius="md"
-                overflow="hidden"
+                role="group"
+                borderRadius="lg"
                 bg="white"
                 boxShadow="sm"
-                transition="transform 180ms ease, box-shadow 180ms ease"
-                _hover={{ transform: 'translateY(-4px)', boxShadow: 'md', cursor: 'pointer' }}
-                onClick={() => {
-                  const bookId = book.id || book.title
-                  navigate(`/workspace/${bookId}`)
-                }}
+                transition="box-shadow 0.2s ease, transform 0.2s ease"
+                _hover={{ boxShadow: 'lg', transform: 'translateY(-2px)' }}
+                cursor="pointer"
+                onClick={() => navigate(`/mvp/${book.id || book.title}`)}
               >
-                <Box
-                  height="180px"
-                  bg={book.cover_url ? 'transparent' : book.color || cleanTheme.canvasBg}
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  borderBottom={cleanTheme.sidebarBorder}
-                >
-                  {book.cover_url ? (
+                <AspectRatio ratio={2 / 3}>
+                  <Box
+                    bg="gray.50"
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                    p="10%" // 🔑 visual equalizer
+                  >
                     <Image
                       src={book.cover_url}
                       alt={book.title}
-                      width="100%"
-                      height="100%"
-                      objectFit="cover"
-                      onError={(e) => {
-                        console.error('Failed to load cover image:', book.cover_url, e)
+                      objectFit="contain"
+                      maxW="100%"
+                      maxH="100%"
+                      transition="box-shadow 0.2s ease"
+                      _groupHover={{
+                        boxShadow: 'xl', // 🔥 shadow around the image
                       }}
                     />
-                  ) : (
-                    <Text fontSize="sm" color="gray.600" px={3} textAlign="center">
-                      {book.title || 'Untitled book'}
-                    </Text>
-                  )}
-                </Box>
-                <Box p={3}>
-                  <Text fontWeight="semibold" noOfLines={1}>
-                    {book.title || 'Untitled book'}
-                  </Text>
-                  <Text fontSize="sm" color="gray.600" noOfLines={1}>
-                    {book.author || 'Unknown author'}
-                  </Text>
-                </Box>
+                  </Box>
+                </AspectRatio>
               </Box>
             ))}
           </SimpleGrid>

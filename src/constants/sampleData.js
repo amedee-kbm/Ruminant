@@ -18,4 +18,3 @@ export const sampleBooks = [
   { id: 'sample-4', title: 'The Noonday Devil', author: 'Jean-Charles Nault', color: '#f3d5ff' },
 ]
 
-

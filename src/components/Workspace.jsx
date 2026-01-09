@@ -7,7 +7,7 @@ import { sampleBooks } from '../constants/sampleData'
 import useAuth from '../hooks/useAuth'
 import { extractEpubData } from '../lib/epubService'
 import WorkspaceHeader from './workspace/WorkspaceHeader'
-import ChaptersSidebar from './workspace/ChaptersSidebar'
+// import ChaptersSidebar from './workspace/ChaptersSidebar' // Removed - using built-in navigation
 import ReadingCanvas from './workspace/ReadingCanvas'
 import RightPane from './workspace/RightPane'
 
@@ -94,7 +94,7 @@ const Workspace = () => {
           if (chaptersList.length > 0 && !currentChapterId) {
             setCurrentChapterId(chaptersList[0].id)
           }
-          // Note: Chapter extraction is now handled by react-reader via onChaptersExtracted callback
+          // Note: Chapter extraction is now handled by react-epub-viewer via onChaptersExtracted callback
           // This ensures chapters are extracted correctly using the wrapper library
         }
       } catch (err) {
@@ -461,33 +461,44 @@ const Workspace = () => {
       />
 
       <Flex flex="1" overflow="hidden">
-        <ChaptersSidebar
-          chapters={chapters}
-          currentChapterId={currentChapterId}
-          scheme={scheme}
-          onChapterSelect={handleChapterSelect}
-        />
-
-        <Flex flex="1" direction="column" bg={scheme.contentBg} px={6} py={6} gap={4} overflow="hidden">
+        {/* Removed ChaptersSidebar - using react-epub-viewer's built-in navigation */}
+        <Flex
+          flex="1"
+          direction="column"
+          bg={scheme.contentBg}
+          px={6}
+          py={6}
+          gap={4}
+          overflow="hidden"
+        >
           <ReadingCanvas
             scheme={scheme}
             currentChapter={currentChapter}
             book={book}
             onAddReflection={handleAddReflection}
             onMarkDone={handleMarkDone}
-            onPrevious={handlePrevious}
-            onNext={handleNext}
+            // Removed onPrevious, onNext - using react-epub-viewer's built-in navigation
             onAddQuestion={handleAddQuestion}
             onChaptersExtracted={async (extractedChapters) => {
-              // Store chapters extracted by react-reader
-              if (extractedChapters && extractedChapters.length > 0 && book?.id && user?.id) {
-                try {
+              try {
+                console.log('[Workspace] onChaptersExtracted called', {
+                  chapterCount: extractedChapters?.length,
+                  hasBook: !!book?.id,
+                  hasUser: !!user?.id,
+                })
+
+                // Store chapters extracted by react-epub-viewer
+                if (extractedChapters && extractedChapters.length > 0 && book?.id && user?.id) {
                   // Delete existing chapters for this book
-                  await supabase
+                  const { error: deleteError } = await supabase
                     .from('chapters')
                     .delete()
                     .eq('book_id', book.id)
                     .eq('user_id', user.id)
+
+                  if (deleteError) {
+                    console.error('[Workspace] Error deleting chapters:', deleteError)
+                  }
 
                   // Insert new chapters
                   const chaptersToInsert = extractedChapters.map((chapter) => ({
@@ -498,28 +509,41 @@ const Workspace = () => {
                     user_id: user.id,
                   }))
 
+                  console.log('[Workspace] Inserting chapters:', chaptersToInsert)
+
                   const { data: insertedChapters, error: insertError } = await supabase
                     .from('chapters')
                     .insert(chaptersToInsert)
                     .select()
 
-                  if (!insertError && insertedChapters) {
-                    console.log(`Extracted and inserted ${insertedChapters.length} chapters from react-reader`)
+                  if (insertError) {
+                    console.error('[Workspace] Error inserting chapters:', insertError)
+                  } else if (insertedChapters) {
+                    console.log(
+                      `[Workspace] Extracted and inserted ${insertedChapters.length} chapters from react-epub-viewer`,
+                      insertedChapters
+                    )
                     setChapters(insertedChapters)
                     if (insertedChapters.length > 0 && !currentChapterId) {
                       setCurrentChapterId(insertedChapters[0].id)
                     }
                   }
-                } catch (err) {
-                  console.error('Error storing chapters from react-reader:', err)
+                } else {
+                  console.warn('[Workspace] onChaptersExtracted called but missing data:', {
+                    hasChapters: !!extractedChapters,
+                    chapterCount: extractedChapters?.length,
+                    hasBook: !!book?.id,
+                    hasUser: !!user?.id,
+                  })
                 }
+              } catch (err) {
+                console.error('[Workspace] Error in onChaptersExtracted:', err, {
+                  errorMessage: err?.message,
+                  errorStack: err?.stack,
+                })
               }
             }}
-            hasPrevious={chapters.length > 0 && chapters.findIndex((ch) => ch.id === currentChapterId) > 0}
-            hasNext={
-              chapters.length > 0 &&
-              chapters.findIndex((ch) => ch.id === currentChapterId) < chapters.length - 1
-            }
+            // Removed hasPrevious, hasNext - using react-epub-viewer's built-in navigation
           />
         </Flex>
 
@@ -539,4 +563,3 @@ const Workspace = () => {
 }
 
 export default Workspace
-

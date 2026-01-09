@@ -193,4 +193,3 @@ export const colorSchemes = [
     primaryText: '#f8fafc',
   },
 ]
-

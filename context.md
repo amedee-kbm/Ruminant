@@ -4,14 +4,15 @@ Ruminant: Turn reading into a habit of inquiry — one chapter, one question, on
 
 ## Features
 
-* Upload EPUB files. Automatically extract each chapter into its own editable note file.
-* Prepare with questions. Set the key questions or goals you want to explore before you read a chapter.
-* Read in-app. Read chapters inside Ruminant; select any passage and turn it into a reflection prompt.
-* Reflect thoughtfully. Answer your initial questions, capture insights, and add free-form notes as you go.
-* Review effortlessly. Generate a concise summary that concatenates all your chapter notes.
-* Export anywhere. Download your work as Markdown or plain text.
+- Upload EPUB files. Automatically extract each chapter into its own editable note file.
+- Prepare with questions. Set the key questions or goals you want to explore before you read a chapter.
+- Read in-app. Read chapters inside Ruminant; select any passage and turn it into a reflection prompt.
+- Reflect thoughtfully. Answer your initial questions, capture insights, and add free-form notes as you go.
+- Review effortlessly. Generate a concise summary that concatenates all your chapter notes.
+- Export anywhere. Download your work as Markdown or plain text.
 
 ## Schema
+
 ```
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.

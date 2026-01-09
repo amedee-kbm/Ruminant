@@ -12,14 +12,12 @@ import supabase from '../supabaseClient'
 const uploadCover = async (coverBlob, userId, timestamp) => {
   const coverExt = coverBlob.type?.split('/')[1] || 'jpg'
   const coverPath = `${userId}/${timestamp}-cover.${coverExt}`
-  
-  const { error: coverError } = await supabase.storage
-    .from('covers')
-    .upload(coverPath, coverBlob, {
-      upsert: true,
-      contentType: coverBlob.type || 'image/jpeg',
-    })
-  
+
+  const { error: coverError } = await supabase.storage.from('covers').upload(coverPath, coverBlob, {
+    upsert: true,
+    contentType: coverBlob.type || 'image/jpeg',
+  })
+
   if (coverError) {
     throw new Error(coverError.message)
   }
@@ -65,13 +63,11 @@ export const uploadBook = async (file, userId) => {
 
   // 2) Upload EPUB to storage (books bucket)
   const epubPath = `${userId}/${timestamp}-${safeName}`
-  const { error: epubError } = await supabase.storage
-    .from('books')
-    .upload(epubPath, file, {
-      upsert: true,
-      contentType: file.type || 'application/epub+zip',
-    })
-  
+  const { error: epubError } = await supabase.storage.from('books').upload(epubPath, file, {
+    upsert: true,
+    contentType: file.type || 'application/epub+zip',
+  })
+
   if (epubError) {
     throw new Error(epubError.message)
   }
@@ -95,32 +91,67 @@ export const uploadBook = async (file, userId) => {
     })
     .select()
     .single()
-  
+
   if (insertError) {
     throw new Error(insertError.message)
   }
 
   const bookId = insertedBook.id
 
-  // 5) Insert chapters into database if they exist
+  // 5) Insert or upsert chapters into database if they exist
   if (data.chapters && data.chapters.length > 0) {
-    const chaptersToInsert = data.chapters.map((chapter, index) => ({
-      book_id: bookId,
-      chapter_index: index,
-      title: chapter.title || `Chapter ${index + 1}`,
-      locator: chapter.href || `chapter-${index}`,
-      user_id: userId,
-    }))
+    // Normalize locator: strip host, fragment, leading slashes, decode and lowercase
+    const normalizeLocator = (href = '') =>
+      decodeURIComponent((href || '').split('#')[0].replace(/^https?:\/\/[^/]+/i, '').replace(/^\/+/, '')).trim().toLowerCase()
 
-    const { error: chaptersError } = await supabase
-      .from('chapters')
-      .insert(chaptersToInsert)
+    const chaptersToInsert = data.chapters.map((chapter, index) => {
+      const locator = chapter.href || `chapter-${index}`
+      return {
+        book_id: bookId,
+        chapter_index: index,
+        title: chapter.title || `Chapter ${index + 1}`,
+        locator,
+        locator_normalized: normalizeLocator(locator),
+        user_id: userId,
+        markdown_content: null,
+        pre_questions: [],
+      }
+    })
 
-    if (chaptersError) {
-      console.warn('Error inserting chapters:', chaptersError)
-      // Don't throw - book upload succeeded, chapters can be added later
-    } else {
-      console.log(`Inserted ${chaptersToInsert.length} chapters for book ${bookId}`)
+    try {
+      // Try upsert using locator_normalized as conflict target if DB has a unique constraint
+      const { error: upsertError } = await supabase
+        .from('chapters')
+        .upsert(chaptersToInsert, { onConflict: ['book_id', 'locator_normalized'] })
+
+      if (upsertError) {
+        console.warn('Upsert chapters error, falling back to insert:', upsertError)
+        // Try a simple insert that does not include -normalized or json columns in case the DB hasn't been migrated yet
+        const fallbackRows = chaptersToInsert.map(({ book_id, chapter_index, title, locator, user_id, markdown_content }) => ({ book_id, chapter_index, title, locator, user_id, markdown_content }))
+
+        const { error: insertError } = await supabase.from('chapters').insert(chaptersToInsert)
+        if (insertError) {
+          console.warn('Error inserting chapters with extended fields:', insertError)
+
+          // If insertion failed due to missing columns, try fallback insert
+          try {
+            const { error: fallbackError } = await supabase.from('chapters').insert(fallbackRows)
+            if (fallbackError) {
+              console.warn('Fallback insert also failed:', fallbackError)
+            } else {
+              console.log(`Inserted ${fallbackRows.length} chapters (fallback) for book ${bookId}`)
+            }
+          } catch (fallbackErr) {
+            console.warn('Unexpected error during fallback insert:', fallbackErr)
+          }
+        } else {
+          console.log(`Inserted ${chaptersToInsert.length} chapters for book ${bookId}`)
+        }
+      } else {
+        console.log(`Upserted/updated ${chaptersToInsert.length} chapters for book ${bookId}`)
+      }
+    } catch (err) {
+      console.warn('Unexpected error upserting/inserting chapters:', err)
     }
   }
 
@@ -129,4 +160,3 @@ export const uploadBook = async (file, userId) => {
     message: `Imported "${data?.title || file.name}"`,
   }
 }
-

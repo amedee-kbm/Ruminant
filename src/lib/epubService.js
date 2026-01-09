@@ -138,17 +138,34 @@ export const extractEpubData = async (file) => {
         if (!title) return false
         const lowerTitle = title.toLowerCase()
         const frontMatterKeywords = [
-          'title', 'copyright', 'dedication', 'acknowledgment', 'acknowledgement',
-          'preface', 'introduction', 'foreword', 'table of contents', 'toc',
-          'cover', 'half-title', 'title page'
+          'title',
+          'copyright',
+          'dedication',
+          'acknowledgment',
+          'acknowledgement',
+          'preface',
+          'introduction',
+          'foreword',
+          'table of contents',
+          'toc',
+          'cover',
+          'half-title',
+          'title page',
         ]
         const backMatterKeywords = [
-          'endnote', 'endnotes', 'appendix', 'glossary', 'index', 'bibliography',
-          'references', 'about the author', 'colophon'
+          'endnote',
+          'endnotes',
+          'appendix',
+          'glossary',
+          'index',
+          'bibliography',
+          'references',
+          'about the author',
+          'colophon',
         ]
-        
+
         const allKeywords = [...frontMatterKeywords, ...backMatterKeywords]
-        return allKeywords.some(keyword => lowerTitle.includes(keyword))
+        return allKeywords.some((keyword) => lowerTitle.includes(keyword))
       }
 
       // Recursive function to extract subchapters

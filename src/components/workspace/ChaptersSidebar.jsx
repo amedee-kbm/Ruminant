@@ -10,8 +10,7 @@ const statusColors = {
 
 const ChaptersSidebar = ({ chapters, currentChapterId, scheme, onChapterSelect }) => {
   // Count chapters with status that is not 'todo' (if status field exists)
-  const completedCount =
-    chapters?.filter((ch) => ch.status && ch.status !== 'todo').length || 0
+  const completedCount = chapters?.filter((ch) => ch.status && ch.status !== 'todo').length || 0
   const totalCount = chapters?.length || 0
 
   return (
@@ -24,12 +23,7 @@ const ChaptersSidebar = ({ chapters, currentChapterId, scheme, onChapterSelect }
       overflowY="auto"
     >
       <HStack justify="space-between" mb={4}>
-        <Text
-          fontWeight="bold"
-          fontSize="sm"
-          textTransform="uppercase"
-          color={scheme.primaryText}
-        >
+        <Text fontWeight="bold" fontSize="sm" textTransform="uppercase" color={scheme.primaryText}>
           Chapters
         </Text>
         <Badge colorScheme="green" borderRadius="sm">
@@ -43,17 +37,18 @@ const ChaptersSidebar = ({ chapters, currentChapterId, scheme, onChapterSelect }
               key={ch.id}
               p={3}
               borderRadius="md"
-              bg={
-                ch.id === currentChapterId
-                  ? scheme.chapterActiveBg
-                  : scheme.chapterInactiveBg
-              }
+              bg={ch.id === currentChapterId ? scheme.chapterActiveBg : scheme.chapterInactiveBg}
               border={scheme.chapterBorder}
               cursor="pointer"
               onClick={() => onChapterSelect?.(ch.id)}
               _hover={{ bg: scheme.chapterActiveBg }}
             >
-              <Text fontSize="xs" textTransform="uppercase" opacity={0.6} color={scheme.primaryText}>
+              <Text
+                fontSize="xs"
+                textTransform="uppercase"
+                opacity={0.6}
+                color={scheme.primaryText}
+              >
                 {ch.chapter_index !== null && ch.chapter_index !== undefined
                   ? `Chapter ${ch.chapter_index + 1}`
                   : `Chapter ${ch.id}`}
@@ -84,4 +79,3 @@ const ChaptersSidebar = ({ chapters, currentChapterId, scheme, onChapterSelect }
 }
 
 export default ChaptersSidebar
-

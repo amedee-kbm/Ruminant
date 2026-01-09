@@ -82,7 +82,13 @@ const RightPane = ({
             </>
           ) : (
             <>
-              <Text mt={3} fontSize="sm" lineHeight="tall" color={scheme.primaryText} whiteSpace="pre-line">
+              <Text
+                mt={3}
+                fontSize="sm"
+                lineHeight="tall"
+                color={scheme.primaryText}
+                whiteSpace="pre-line"
+              >
                 {surveyNotes || 'No survey notes yet. Click "Edit survey notes" to add some.'}
               </Text>
               <Button
@@ -161,9 +167,7 @@ const RightPane = ({
           >
             <Text fontSize="sm" color={scheme.primaryText} whiteSpace="pre-line">
               {reflections && reflections.length > 0
-                ? reflections
-                    .map((r) => r.reflection_text)
-                    .join('\n\n')
+                ? reflections.map((r) => r.reflection_text).join('\n\n')
                 : 'Your recitation will appear here. Use "Add Reflection" to record your thoughts.'}
             </Text>
           </Box>
@@ -194,4 +198,3 @@ const RightPane = ({
 }
 
 export default RightPane
-

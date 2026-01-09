@@ -74,4 +74,3 @@ const WorkspaceHeader = ({ book, scheme, onCycleScheme, onExport }) => {
 }
 
 export default WorkspaceHeader
-
