@@ -56,8 +56,8 @@ export const MVP = () => {
     }
   }
 
-  // View mode: 'both' | 'read' | 'notes'
-  const [viewMode, setViewMode] = useState('both')
+  // View mode: 'read' | 'notes'
+  const [viewMode, setViewMode] = useState('read')
 
   // Pre-questions editing state
   const [editingQuestions, setEditingQuestions] = useState(false)
@@ -292,6 +292,13 @@ export const MVP = () => {
           console.error('❌ Error fetching chapters list:', error)
           return
         }
+
+        console.log('📚 Fetched chapters for book:', {
+          bookId,
+          userId,
+          count: data?.length || 0,
+          sample: (data || []).slice(0, 5),
+        })
 
         setChaptersList(data || [])
       } catch (err) {
@@ -762,94 +769,290 @@ export const MVP = () => {
   // Render
   // -------------------------
   return (
-    <div style={{ display: 'flex', height: '100vh', position: 'relative' }}>
-      {/* View toggle */}
-      <div style={{ position: 'absolute', right: 12, top: 12, zIndex: 20, display: 'flex', gap: 6 }}>
-        <button onClick={() => setViewMode('read')} style={{ padding: '6px 8px', backgroundColor: viewMode === 'read' ? '#2563eb' : '#222', color: '#fff', border: 'none', borderRadius: 4 }}>Read</button>
-        <button onClick={() => setViewMode('both')} style={{ padding: '6px 8px', backgroundColor: viewMode === 'both' ? '#2563eb' : '#222', color: '#fff', border: 'none', borderRadius: 4 }}>Both</button>
-        <button onClick={() => setViewMode('notes')} style={{ padding: '6px 8px', backgroundColor: viewMode === 'notes' ? '#2563eb' : '#222', color: '#fff', border: 'none', borderRadius: 4 }}>Notes</button>
-        <button onClick={createReflectionFromSelection} style={{ padding: '6px 8px', backgroundColor: '#f59e0b', color: '#000', border: 'none', borderRadius: 4 }}>Make reflection</button>
-        <button onClick={generateConciseSummary} style={{ padding: '6px 8px', backgroundColor: generatingSummary ? '#9ca3ff' : '#6ee7b7', color: '#000', border: 'none', borderRadius: 4 }}>{generatingSummary ? 'Generating...' : 'Generate summary'}</button>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', position: 'relative' }}>
+      {/* Top bar: mode toggle + actions */}
+      <div
+        style={{
+          padding: '8px 12px',
+          borderBottom: '1px solid #2a2a2a',
+          backgroundColor: '#111',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          zIndex: 20,
+        }}
+      >
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button
+            onClick={() => setViewMode('read')}
+            style={{
+              padding: '6px 10px',
+              backgroundColor: viewMode === 'read' ? '#2563eb' : '#222',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 4,
+            }}
+          >
+            Read
+          </button>
+          <button
+            onClick={() => setViewMode('notes')}
+            style={{
+              padding: '6px 10px',
+              backgroundColor: viewMode === 'notes' ? '#2563eb' : '#222',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 4,
+            }}
+          >
+            Notes
+          </button>
+        </div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button
+            onClick={createReflectionFromSelection}
+            style={{
+              padding: '6px 10px',
+              backgroundColor: '#f59e0b',
+              color: '#000',
+              border: 'none',
+              borderRadius: 4,
+            }}
+          >
+            Make reflection
+          </button>
+          <button
+            onClick={generateConciseSummary}
+            style={{
+              padding: '6px 10px',
+              backgroundColor: generatingSummary ? '#9ca3ff' : '#6ee7b7',
+              color: '#000',
+              border: 'none',
+              borderRadius: 4,
+            }}
+          >
+            {generatingSummary ? 'Generating...' : 'Generate summary'}
+          </button>
+        </div>
       </div>
 
       {/* Summary overlay */}
       {summaryVisible && (
-        <div style={{ position: 'absolute', right: 12, top: 60, zIndex: 30, width: 420, maxHeight: '70vh', overflow: 'auto', background: '#121212', border: '1px solid #2b2b2b', padding: 12, borderRadius: 6 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <div
+          style={{
+            position: 'absolute',
+            right: 12,
+            top: 56,
+            zIndex: 30,
+            width: 420,
+            maxHeight: '70vh',
+            overflow: 'auto',
+            background: '#121212',
+            border: '1px solid #2b2b2b',
+            padding: 12,
+            borderRadius: 6,
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: 8,
+            }}
+          >
             <div style={{ fontWeight: 700, color: '#fff' }}>Concise summary</div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <div style={{ display: 'flex', gap: 6 }}>
-                <button onClick={() => setDownloadFormat('md')} style={{ padding: '6px 8px', background: downloadFormat === 'md' ? '#111' : '#222', color: '#fff', border: '1px solid #2a2a2a', borderRadius: 4 }}>MD</button>
-                <button onClick={() => setDownloadFormat('txt')} style={{ padding: '6px 8px', background: downloadFormat === 'txt' ? '#111' : '#222', color: '#fff', border: '1px solid #2a2a2a', borderRadius: 4 }}>TXT</button>
+                <button
+                  onClick={() => setDownloadFormat('md')}
+                  style={{
+                    padding: '6px 8px',
+                    background: downloadFormat === 'md' ? '#111' : '#222',
+                    color: '#fff',
+                    border: '1px solid #2a2a2a',
+                    borderRadius: 4,
+                  }}
+                >
+                  MD
+                </button>
+                <button
+                  onClick={() => setDownloadFormat('txt')}
+                  style={{
+                    padding: '6px 8px',
+                    background: downloadFormat === 'txt' ? '#111' : '#222',
+                    color: '#fff',
+                    border: '1px solid #2a2a2a',
+                    borderRadius: 4,
+                  }}
+                >
+                  TXT
+                </button>
               </div>
-              <button onClick={() => copyToClipboard(summaryText)} style={{ padding: '6px 8px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 4 }}>Copy</button>
-              <button onClick={() => downloadConcatenatedNotes()} style={{ padding: '6px 8px', background: '#f59e0b', color: '#000', border: 'none', borderRadius: 4 }}>Download ({downloadFormat.toUpperCase()})</button>
-              <button onClick={() => setSummaryVisible(false)} style={{ padding: '6px 8px', background: '#444', color: '#fff', border: 'none', borderRadius: 4 }}>Close</button>
+              <button
+                onClick={() => copyToClipboard(summaryText)}
+                style={{
+                  padding: '6px 8px',
+                  background: '#2563eb',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 4,
+                }}
+              >
+                Copy
+              </button>
+              <button
+                onClick={() => downloadConcatenatedNotes()}
+                style={{
+                  padding: '6px 8px',
+                  background: '#f59e0b',
+                  color: '#000',
+                  border: 'none',
+                  borderRadius: 4,
+                }}
+              >
+                Download ({downloadFormat.toUpperCase()})
+              </button>
+              <button
+                onClick={() => setSummaryVisible(false)}
+                style={{
+                  padding: '6px 8px',
+                  background: '#444',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 4,
+                }}
+              >
+                Close
+              </button>
             </div>
           </div>
 
-          <div style={{ color: '#d1d5db', whiteSpace: 'pre-wrap', fontSize: 13, lineHeight: 1.3 }}>{summaryText || 'No notes yet.'}</div>
+          <div
+            style={{
+              color: '#d1d5db',
+              whiteSpace: 'pre-wrap',
+              fontSize: 13,
+              lineHeight: 1.3,
+            }}
+          >
+            {summaryText || 'No notes yet.'}
+          </div>
 
-          <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ color: '#9e9e9e', fontSize: 12 }}>{concatenatedNotes ? 'Includes all chapters' : ''}</div>
-            <button onClick={() => setShowAllNotes((s) => !s)} style={{ padding: '6px 8px', background: '#222', color: '#fff', border: 'none', borderRadius: 4 }}>{showAllNotes ? 'Hide all' : 'Show all notes'}</button>
+          <div
+            style={{
+              marginTop: 8,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <div style={{ color: '#9e9e9e', fontSize: 12 }}>
+              {concatenatedNotes ? 'Includes all chapters' : ''}
+            </div>
+            <button
+              onClick={() => setShowAllNotes((s) => !s)}
+              style={{
+                padding: '6px 8px',
+                background: '#222',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 4,
+              }}
+            >
+              {showAllNotes ? 'Hide all' : 'Show all notes'}
+            </button>
           </div>
 
           {showAllNotes && (
-            <pre style={{ marginTop: 8, background: '#0f172a', color: '#e2e8f0', padding: 8, borderRadius: 6, maxHeight: '50vh', overflow: 'auto', whiteSpace: 'pre-wrap' }}>{concatenatedNotes || '(no notes)'}</pre>
+            <pre
+              style={{
+                marginTop: 8,
+                background: '#0f172a',
+                color: '#e2e8f0',
+                padding: 8,
+                borderRadius: 6,
+                maxHeight: '50vh',
+                overflow: 'auto',
+                whiteSpace: 'pre-wrap',
+              }}
+            >
+              {concatenatedNotes || '(no notes)'}
+            </pre>
           )}
         </div>
       )}
 
-      {/* EPUB reader */}
-      <div style={{ width: viewMode === 'notes' ? 0 : viewMode === 'both' ? '60%' : '100%', display: viewMode === 'notes' ? 'none' : 'block' }}>
-        {epubUrl && (
-          <ReactReader
-            url={epubUrl}
-            location={location}
-            locationChanged={locationChanged}
-            getRendition={(r) => (renditionRef.current = r)}
-            tocChanged={(toc) => (tocRef.current = toc)}
-          />
-        )}
-      </div>
-
-      {/* Notes Library (right pane) */}
-      <div style={{ width: viewMode === 'read' ? 0 : viewMode === 'both' ? '40%' : '100%', height: '100%', backgroundColor: '#1f1f1f', display: viewMode === 'read' ? 'none' : 'flex' }}>
-        {/* Chapters list */}
-        <div style={{ width: '34%', borderRight: '1px solid #2a2a2a', overflowY: 'auto', padding: '8px', boxSizing: 'border-box' }}>
-          <div style={{ color: '#fff', marginBottom: '8px', fontWeight: 600 }}>Chapters</div>
-          {chaptersList.length === 0 && (
-            <div style={{ color: '#ccc', fontSize: 13 }}>No chapters found for this book.</div>
-          )}
-          {chaptersList.map((ch) => (
+      {/* Main content area */}
+      <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
+        {viewMode === 'read' ? (
+          // Full-screen reader
+          <div style={{ flex: 1, backgroundColor: '#000' }}>
+            {epubUrl && (
+              <ReactReader
+                url={epubUrl}
+                location={location}
+                locationChanged={locationChanged}
+                getRendition={(r) => (renditionRef.current = r)}
+                tocChanged={(toc) => {
+                  console.log('📚 ReactReader TOC:', toc)
+                  tocRef.current = toc
+                }}
+              />
+            )}
+          </div>
+        ) : (
+          // Notes / working mode: chapters list + editor
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              height: '100%',
+              backgroundColor: '#1f1f1f',
+            }}
+          >
+            {/* Chapters list */}
             <div
-              key={ch.id}
-              onClick={() => selectChapter(ch)}
               style={{
+                width: '34%',
+                borderRight: '1px solid #2a2a2a',
+                overflowY: 'auto',
                 padding: '8px',
-                marginBottom: '6px',
-                cursor: 'pointer',
-                backgroundColor: dbChapter?.id === ch.id ? '#2b2b2b' : 'transparent',
-                borderRadius: 4,
+                boxSizing: 'border-box',
               }}
             >
-              <div style={{ color: '#fff', fontSize: 14, fontWeight: 600 }}>{ch.title}</div>
-              <div style={{ color: '#9e9e9e', fontSize: 12, marginTop: 4 }}>
-                {ch.markdown_content ? 'Has notes' : 'No notes'}
-                {ch.pre_questions && ch.pre_questions.length > 0 && (
-                  <span style={{ marginLeft: 8 }}>• {ch.pre_questions.length} questions</span>
-                )}
-                {chapterHasDraft(ch.id) && (
-                  <span style={{ marginLeft: 8, color: '#f59e0b' }}>• draft</span>
-                )}
-              </div>
+          <div style={{ color: '#fff', marginBottom: '8px', fontWeight: 600 }}>Chapters</div>
+              {chaptersList.length === 0 && (
+                <div style={{ color: '#ccc', fontSize: 13 }}>No chapters found for this book.</div>
+              )}
+              {chaptersList.map((ch) => (
+                <div
+                  key={ch.id}
+                  onClick={() => selectChapter(ch)}
+                  style={{
+                    padding: '8px',
+                    marginBottom: '6px',
+                    cursor: 'pointer',
+                    backgroundColor: dbChapter?.id === ch.id ? '#2b2b2b' : 'transparent',
+                    borderRadius: 4,
+                  }}
+                >
+                  <div style={{ color: '#fff', fontSize: 14, fontWeight: 600 }}>{ch.title}</div>
+                  <div style={{ color: '#9e9e9e', fontSize: 12, marginTop: 4 }}>
+                    {ch.markdown_content ? 'Has notes' : 'No notes'}
+                    {ch.pre_questions && ch.pre_questions.length > 0 && (
+                      <span style={{ marginLeft: 8 }}>• {ch.pre_questions.length} questions</span>
+                    )}
+                    {chapterHasDraft(ch.id) && (
+                      <span style={{ marginLeft: 8, color: '#f59e0b' }}>• draft</span>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        {/* Editor area */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            {/* Editor area */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           {dbChapter ? (
             <>
               <div style={{ padding: '10px', borderBottom: '1px solid #222', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -909,9 +1112,13 @@ export const MVP = () => {
               </div>
             </>
           ) : (
-            <div style={{ padding: 16, color: '#ccc' }}>Select a chapter from the left to view or edit notes.</div>
+            <div style={{ padding: 16, color: '#ccc' }}>
+              Select a chapter from the left to view or edit notes.
+            </div>
           )}
         </div>
+      </div>
+        )}
       </div>
     </div>
   )
