@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router'
 import { useFetchData } from '../hooks/useFetchData'
 import { useFilePicker } from '../hooks/useFilePicker'
 import useAuth from '../hooks/useAuth'
-import { uploadBook, saveChaptersForBook } from '../lib/bookUploadService'
+import { uploadBook } from '../lib/bookUploadService'
 import { cleanTheme } from '../constants/theme'
 import { sampleBooks } from '../constants/sampleData'
 import {
@@ -32,8 +32,6 @@ const Home = () => {
   const [extracting, setExtracting] = useState(false)
   const [extractionError, setExtractionError] = useState(null)
   const [uploadStatus, setUploadStatus] = useState(null)
-  const [chapterSelection, setChapterSelection] = useState(null)
-  const [savingChapters, setSavingChapters] = useState(false)
 
   const { fileInputRef, selectedFile, handleUploadClick, handleFileChange, accept } = useFilePicker(
     {
@@ -43,28 +41,10 @@ const Home = () => {
         setUploadStatus(null)
         try {
           const result = await uploadBook(file, user?.id)
-
-          // Initialize chapter selection step if we have chapters and bookId
-          if (result.bookId && Array.isArray(result.chapters) && result.chapters.length > 0) {
-            setChapterSelection({
-              bookId: result.bookId,
-              chapters: result.chapters.map((ch, index) => ({
-                ...ch,
-                _index: index,
-                _selected: true,
-              })),
-            })
-          } else if (!result.bookId) {
-            // Book was uploaded but we couldn't get the ID (RLS issue)
-            // User will need to refresh to see it, but we still show success
-            console.warn('⚠️ Book uploaded but bookId is null. User may need to refresh to see it.')
-          }
-
           setUploadStatus({
             state: 'success',
             message: result.message,
           })
-
           // Refresh the books list to show the newly uploaded book
           refetchBooks()
         } catch (error) {
@@ -81,60 +61,6 @@ const Home = () => {
   )
 
   const booksToShow = books && books.length > 0 ? books : sampleBooks
-
-  const handleToggleChapter = (idx) => {
-    setChapterSelection((prev) => {
-      if (!prev) return prev
-      return {
-        ...prev,
-        chapters: prev.chapters.map((ch, i) =>
-          i === idx ? { ...ch, _selected: !ch._selected } : ch
-        ),
-      }
-    })
-  }
-
-  const handleSelectAllChapters = (checked) => {
-    setChapterSelection((prev) => {
-      if (!prev) return prev
-      return {
-        ...prev,
-        chapters: prev.chapters.map((ch) => ({ ...ch, _selected: checked })),
-      }
-    })
-  }
-
-  const handleConfirmChapters = async () => {
-    if (!chapterSelection || !user?.id) return
-    const selected = chapterSelection.chapters.filter((c) => c._selected)
-    setSavingChapters(true)
-    try {
-      await saveChaptersForBook(chapterSelection.bookId, selected, user.id)
-      setUploadStatus((prev) => ({
-        state: 'success',
-        message:
-          selected.length > 0
-            ? `Imported ${selected.length} chapters.`
-            : 'Book imported without chapters.',
-      }))
-
-      // Refresh the books list (though it shouldn't change, this ensures consistency)
-      refetchBooks()
-    } catch (err) {
-      console.error('Error saving selected chapters:', err)
-      setUploadStatus({
-        state: 'error',
-        message: 'There was a problem saving chapters.',
-      })
-    } finally {
-      setSavingChapters(false)
-      setChapterSelection(null)
-    }
-  }
-
-  const handleCancelChapters = () => {
-    setChapterSelection(null)
-  }
 
   if (loading) {
     return (
@@ -229,76 +155,6 @@ const Home = () => {
               </HStack>
             )}
           </HStack>
-
-          {chapterSelection && (
-            <Box
-              borderRadius="md"
-              border="1px solid #e2e8f0"
-              bg="white"
-              p={4}
-            >
-              <HStack justify="space-between" mb={3}>
-                <Box>
-                  <Heading size="sm" mb={1}>
-                    Select chapters to import
-                  </Heading>
-                  <Text fontSize="sm" color="gray.600">
-                    Choose which chapters from this EPUB you want to turn into notes.
-                  </Text>
-                </Box>
-                <HStack spacing={2}>
-                  <input
-                    type="checkbox"
-                    checked={chapterSelection.chapters.every((c) => c._selected)}
-                    ref={undefined}
-                    onChange={(e) => handleSelectAllChapters(e.target.checked)}
-                  />
-                  <Text fontSize="sm">Select all</Text>
-                </HStack>
-              </HStack>
-
-              <VStack
-                align="stretch"
-                spacing={1}
-                maxH="260px"
-                overflowY="auto"
-                borderRadius="md"
-                border="1px solid #edf2f7"
-                p={2}
-              >
-                {chapterSelection.chapters.map((ch, idx) => (
-                  <HStack
-                    key={ch.id || ch.href || idx}
-                    spacing={2}
-                    as="label"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={!!ch._selected}
-                      onChange={() => handleToggleChapter(idx)}
-                    />
-                    <Text fontSize="sm">
-                      {ch.title || `Chapter ${idx + 1}`}
-                    </Text>
-                  </HStack>
-                ))}
-              </VStack>
-
-              <HStack justify="flex-end" spacing={3} mt={3}>
-                <Button variant="ghost" size="sm" onClick={handleCancelChapters}>
-                  Skip
-                </Button>
-                <Button
-                  size="sm"
-                  colorScheme="blue"
-                  onClick={handleConfirmChapters}
-                  isLoading={savingChapters}
-                >
-                  Save selected chapters
-                </Button>
-              </HStack>
-            </Box>
-          )}
 
           <SimpleGrid minChildWidth="180px" spacing={6}>
             {booksToShow.map((book) => (
