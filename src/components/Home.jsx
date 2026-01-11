@@ -113,9 +113,10 @@ const Home = () => {
             </Box>
           </HStack>
           <HStack spacing={3}>
-            <Button variant="ghost" leftIcon={<BookOpen size={16} />} as="a" href="/workspace">
+            {/* Workspace button */}
+            {/* <Button variant="ghost" leftIcon={<BookOpen size={16} />} as="a" href="/workspace">
               Workspace
-            </Button>
+            </Button> */}
             <Button
               bg={cleanTheme.accent}
               _hover={{ bg: cleanTheme.accentHover }}
