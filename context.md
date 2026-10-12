@@ -4,12 +4,12 @@ Ruminant: Turn reading into a habit of inquiry — one chapter, one question, on
 
 ## Features
 
-- Upload EPUB files. Automatically extract each chapter into its own editable note file.
-- Prepare with questions. Set the key questions or goals you want to explore before you read a chapter.
-- Read in-app. Read chapters inside Ruminant; select any passage and turn it into a reflection prompt.
-- Reflect thoughtfully. Answer your initial questions, capture insights, and add free-form notes as you go.
-- Review effortlessly. Generate a concise summary that concatenates all your chapter notes.
-- Export anywhere. Download your work as Markdown or plain text.
+- Read anywhere. There's no in-app reader; Ruminant is for thinking about what you read.
+- Add a book by typing its title and chapters, or import an EPUB to fill them in (the file isn't kept).
+- Before you start, write what you want from the book.
+- As you read, jot a few notes per chapter.
+- When you finish, write what you'll keep.
+- Export everything as Markdown.
 
 ## Schema
 
@@ -23,8 +23,9 @@ CREATE TABLE public.books (
   user_id uuid NOT NULL,
   title text NOT NULL,
   author text,
-  epub_path text,
   cover_url text,
+  question text,                  -- what the reader wants from the book
+  takeaway text,                  -- what they'll keep
   CONSTRAINT books_pkey PRIMARY KEY (id),
   CONSTRAINT books_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
@@ -36,44 +37,16 @@ CREATE TABLE public.chapters (
   title text,
   locator text NOT NULL,
   user_id uuid NOT NULL,
+  -- Added by later migrations; the app reads/writes these (exact types not recorded here):
+  markdown_content text,          -- the chapter's notes
+  locator_normalized text,        -- optional; upsert target with book_id if a unique constraint exists
   CONSTRAINT chapters_pkey PRIMARY KEY (id),
   CONSTRAINT chapters_book_id_fkey FOREIGN KEY (book_id) REFERENCES public.books(id) ON DELETE CASCADE,
   CONSTRAINT chapters_book_chapter_unique UNIQUE (book_id, chapter_index),
   CONSTRAINT chapters_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
-CREATE TABLE public.questions (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  chapter_id uuid NOT NULL,
-  question_text text NOT NULL,
-  cfi text,
-  highlight_text text,
-  source USER-DEFINED DEFAULT 'initial'::question_source,
-  user_id uuid NOT NULL,
-  CONSTRAINT questions_pkey PRIMARY KEY (id),
-  CONSTRAINT questions_chapter_id_fkey FOREIGN KEY (chapter_id) REFERENCES public.chapters(id),
-  CONSTRAINT questions_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
-);
-CREATE TABLE public.reflections (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  chapter_id uuid NOT NULL,
-  question_id uuid,
-  reflection_text text NOT NULL,
-  user_id uuid NOT NULL,
-  CONSTRAINT reflections_pkey PRIMARY KEY (id),
-  CONSTRAINT reflections_chapter_id_fkey FOREIGN KEY (chapter_id) REFERENCES public.chapters(id),
-  CONSTRAINT reflections_question_id_fkey FOREIGN KEY (question_id) REFERENCES public.questions(id),
-  CONSTRAINT reflections_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
-);
-CREATE TABLE public.summaries (
-  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
-  generated_at timestamp with time zone NOT NULL DEFAULT now(),
-  book_id uuid NOT NULL,
-  combined_text text NOT NULL,
-  user_id uuid NOT NULL,
-  CONSTRAINT summaries_pkey PRIMARY KEY (id),
-  CONSTRAINT summaries_book_id_fkey FOREIGN KEY (book_id) REFERENCES public.books(id),
-  CONSTRAINT summaries_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
-);
 ```
+
+The `questions`, `reflections` and `summaries` tables, `books.epub_path` and
+`chapters.pre_questions` are dropped by the SQL files in [supabase/migrations/](supabase/migrations/).
+Covers live in the `covers` storage bucket.

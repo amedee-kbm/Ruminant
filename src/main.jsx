@@ -3,6 +3,10 @@ import { BrowserRouter } from 'react-router'
 import { ChakraProvider, defaultSystem } from '@chakra-ui/react'
 import App from './App'
 import { AuthProvider } from './contexts/AuthProvider'
+import { initColorMode } from './lib/colorMode'
+import './theme.css'
+
+initColorMode()
 
 const root = document.getElementById('root')
 

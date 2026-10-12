@@ -4,7 +4,18 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ruminant</title>
+    <title>Ruminant</title>
+    <script>
+      // Apply the saved colour mode before first paint (see src/lib/colorMode.js)
+      try {
+        var mode = localStorage.getItem('ruminant:color-mode') || 'system'
+        var dark =
+          mode === 'dark' ||
+          (mode === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)
+        if (dark) document.documentElement.classList.add('dark')
+        document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

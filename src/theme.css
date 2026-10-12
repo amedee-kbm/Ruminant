@@ -1,0 +1,48 @@
+/*
+ * Ruminant's colours, as CSS variables so every page and icon follows the colour mode.
+ * Dark mode is the `dark` class on <html> (set by src/lib/colorMode.js and an inline script in
+ * index.html), the same class Chakra's own components respond to.
+ */
+
+:root {
+  --r-app-bg: #ffffff;
+  --r-surface: #ffffff;
+  --r-canvas: #f5f5f4;
+  --r-text: #262626;
+  --r-muted: #73726e;
+  --r-faint: #a3a29e;
+  --r-border: rgba(41, 41, 41, 0.12);
+  --r-border-strong: rgba(41, 41, 41, 0.22);
+  --r-hover: rgba(41, 41, 41, 0.04);
+  --r-header-bg: rgba(255, 255, 255, 0.92);
+  --r-accent: #292929;
+  --r-accent-hover: #191712;
+  --r-on-accent: #ffffff;
+  --r-done: #16a34a;
+  --r-error: #dc2626;
+  --r-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+html.dark {
+  --r-app-bg: #161615;
+  --r-surface: #1f1f1d;
+  --r-canvas: #262624;
+  --r-text: #e8e6e3;
+  --r-muted: #a09d97;
+  --r-faint: #6f6c67;
+  --r-border: rgba(255, 255, 255, 0.1);
+  --r-border-strong: rgba(255, 255, 255, 0.2);
+  --r-hover: rgba(255, 255, 255, 0.05);
+  --r-header-bg: rgba(22, 22, 21, 0.88);
+  --r-accent: #ecebe8;
+  --r-accent-hover: #ffffff;
+  --r-on-accent: #161615;
+  --r-done: #22c55e;
+  --r-error: #f87171;
+  --r-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+body {
+  background: var(--r-app-bg);
+  color: var(--r-text);
+}

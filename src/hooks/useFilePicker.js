@@ -11,14 +11,15 @@ export const useFilePicker = (options = {}) => {
 
   const handleFileChange = (event) => {
     const file = event.target.files?.[0]
-    if (file) {
-      if (file.type === 'application/epub+zip' || file.name.endsWith('.epub')) {
-        setSelectedFile(file)
-        console.log('Selected EPUB file:', file.name)
-        onFileSelected?.(file)
-      } else {
-        alert('Please select a valid EPUB file')
-      }
+    // Reset so picking the same file again (e.g. after a failed upload) still fires onChange
+    event.target.value = ''
+    if (!file) return
+
+    if (file.type === 'application/epub+zip' || file.name.toLowerCase().endsWith('.epub')) {
+      setSelectedFile(file)
+      onFileSelected?.(file)
+    } else {
+      alert('Please select a valid EPUB file')
     }
   }
 

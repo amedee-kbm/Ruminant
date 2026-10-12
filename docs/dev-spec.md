@@ -1,5 +1,10 @@
 ## Ruminant — Developer Specification
 
+> **Status:** this is the original build plan and is kept for reference. File names below
+> (`MainWorkspaceMockup.jsx`, `BooksCollection.jsx`, `ReadingCanvas.jsx`, `RightPaneTabs.jsx`, …)
+> describe the planned structure, not the current code. See the README for the current layout:
+> the workspace lives in `src/components/book/` and data access in `src/lib/booksApi.js`.
+
 This document is a sequential, actionable development specification for a single full‑stack developer building the Ruminant reading workspace. It assumes the repository already contains the UI mockup at `src/components/MainWorkspaceMockup.jsx`, a `supabaseClient.js` in `src/`, and the database tables shown in the supplied schema image.
 
 Purpose

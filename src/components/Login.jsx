@@ -1,20 +1,29 @@
 import { useState } from 'react'
-import { Box, VStack, Heading, Text, Input, Button, Field, Link } from '@chakra-ui/react'
+import { Box, Button, Field, Heading, Input, Text, VStack } from '@chakra-ui/react'
+import { MailCheck } from 'lucide-react'
+
 import login_bg from '../assets/login_bg.jpg'
 import supabase from '../supabaseClient'
+import { accentButtonProps, cleanTheme } from '../constants/theme'
+import { useDocumentTitle } from '../hooks/useDocumentTitle'
 
 function Login() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
+  const [sentTo, setSentTo] = useState(null)
+  const [error, setError] = useState(null)
+
+  useDocumentTitle('Sign in')
 
   const handleLogin = async (event) => {
     event.preventDefault()
     setLoading(true)
+    setError(null)
     const { error } = await supabase.auth.signInWithOtp({ email })
     if (error) {
-      alert(error.error_description || error.message)
+      setError(error.error_description || error.message)
     } else {
-      alert('Check your email for the login link!')
+      setSentTo(email)
     }
     setLoading(false)
   }
@@ -30,85 +39,59 @@ function Login() {
       justifyContent="center"
       p={4}
     >
-      <Box bg="white" borderRadius="xl" p={8} maxW="500px" w="full" boxShadow="xl">
-        <VStack spacing={6} align="stretch">
-          {/* Logo */}
-          <Box textAlign="center" mb={2}>
-            <Box
-              display="inline-flex"
-              alignItems="center"
-              justifyContent="center"
-              w="60px"
-              h="60px"
-              borderRadius="full"
-              border="3px solid"
-              borderColor="teal.500"
-              mb={4}
-            >
-              <Text fontSize="2xl" fontWeight="bold" color="teal.600" transform="rotate(-15deg)">
-                r
-              </Text>
-            </Box>
-            <Heading as="h1" size="lg" fontWeight="normal" color="gray.700" letterSpacing="tight">
-              ruminant.
+      <Box
+        bg={cleanTheme.surface}
+        borderRadius="xl"
+        p={{ base: 6, md: 8 }}
+        maxW="420px"
+        w="full"
+        boxShadow="xl"
+      >
+        <VStack gap={6} align="stretch">
+          <Box>
+            <Heading as="h1" fontFamily={cleanTheme.serif} fontSize="3xl" fontWeight={700} mb={2}>
+              Ruminant
             </Heading>
+            <Text color={cleanTheme.placeholderText}>
+              Think about what you read, one chapter at a time.
+            </Text>
           </Box>
 
-          {/* Welcome Text */}
-          <Heading as="h2" size="lg" textAlign="center" fontWeight="normal" color="gray.800">
-            Welcome
-          </Heading>
-
-          <Text textAlign="center" color="gray.600" fontSize="sm">
-            Log in to Ruminant to continue to Account.
-          </Text>
-
-          {/* Email Input */}
-          <form onSubmit={handleLogin}>
-            <Field.Root>
-              <Field.Label color="teal.600" fontSize="sm" fontWeight="normal">
-                Email address*
-              </Field.Label>
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                borderColor="teal.500"
-                borderWidth="2px"
-                _hover={{ borderColor: 'teal.600' }}
-                _focus={{
-                  borderColor: 'teal.600',
-                  boxShadow: '0 0 0 1px var(--chakra-colors-teal-600)',
-                }}
-                size="lg"
-                bg="white"
-                mb={2}
-              />
-            </Field.Root>
-
-            {/* Continue Button */}
-            <Button
-              bg="teal.600"
-              color="white"
-              size="lg"
-              _hover={{ bg: 'teal.700' }}
-              _active={{ bg: 'teal.800' }}
-              fontWeight="semibold"
-              py={6}
-              type="submit"
-              disabled={loading}
-            >
-              {loading ? 'Sending...' : 'Send magic link'}
-            </Button>
-          </form>
-
-          {/* Sign Up Link */}
-          <Text textAlign="center" fontSize="sm" color="gray.700">
-            Don't have a Ruminant account?{' '}
-            <Link color="teal.600" fontWeight="semibold">
-              Sign up!
-            </Link>
-          </Text>
+          {sentTo ? (
+            <VStack align="flex-start" gap={3}>
+              <MailCheck size={28} color={cleanTheme.done} />
+              <Text>
+                We sent a sign-in link to <strong>{sentTo}</strong>. Open it on this device to
+                continue.
+              </Text>
+              <Button variant="plain" p={0} h="auto" onClick={() => setSentTo(null)}>
+                <Text as="span" fontSize="sm" textDecoration="underline">
+                  Use a different email
+                </Text>
+              </Button>
+            </VStack>
+          ) : (
+            <VStack as="form" onSubmit={handleLogin} align="stretch" gap={4}>
+              <Field.Root required invalid={!!error}>
+                <Field.Label>Email</Field.Label>
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  size="lg"
+                  autoFocus
+                />
+                {error && <Field.ErrorText>{error}</Field.ErrorText>}
+                <Field.HelperText>
+                  No password. We’ll email you a link; new accounts are created automatically.
+                </Field.HelperText>
+              </Field.Root>
+              <Button type="submit" size="lg" {...accentButtonProps} loading={loading}>
+                Send sign-in link
+              </Button>
+            </VStack>
+          )}
         </VStack>
       </Box>
     </Box>

@@ -1,74 +1,50 @@
-import MainWorkspaceMockup from './components/MainWorkspaceMockup'
-import Workspace from './components/Workspace'
-import Login from './components/Login'
-import Home from './components/Home'
-import Reader from './components/Reader'
-import EnhancedReader from './components/EnhancedReader'
-import BooksCollection from './components/BooksCollection'
-import MVP from './components/MVP'
-import MVPfull from './components/MVPfull'
+import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router'
 import useAuth from './hooks/useAuth'
 
-// Protected route component that handles auth state properly
+// Route-level code splitting keeps the reader/editor out of the login and library bundles
+const Login = lazy(() => import('./components/Login'))
+const Home = lazy(() => import('./components/Home'))
+const BookWorkspace = lazy(() => import('./components/book/BookWorkspace'))
+
+const Loading = () => <div>Loading...</div>
+
 const ProtectedRoute = ({ children }) => {
-  const { session, loading } = useAuth()
-
-  if (loading) {
-    return <div>Loading...</div>
-  }
-
-  if (!session) {
-    return <Navigate to="/sign-in" replace />
-  }
-
-  return children
+  const { session } = useAuth()
+  return session ? children : <Navigate to="/sign-in" replace />
 }
 
 const App = () => {
   const { session, loading } = useAuth()
 
-  // Show loading state while checking auth
-  // But don't redirect if we're still loading - this prevents flash of logout
+  // Wait for the initial session check so signed-in users aren't bounced to /sign-in
   if (loading) {
-    return <div>Loading...</div>
+    return <Loading />
   }
 
   return (
-    <>
+    <Suspense fallback={<Loading />}>
       <Routes>
-        <Route path="/" element={session ? <Home /> : <Navigate to="/sign-in" replace />} />
-        <Route path="/reader" element={<Reader />} />
         <Route
-          path="/mvp/:bookId?"
+          path="/"
           element={
             <ProtectedRoute>
-              <MVP />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="/mvpfull" element={<MVPfull />} />
-        <Route path="/enhanced-reader" element={<EnhancedReader />} />
-        <Route
-          path="/workspace/:bookId"
-          element={
-            <ProtectedRoute>
-              <Workspace />
+              <Home />
             </ProtectedRoute>
           }
         />
         <Route
-          path="/workspace"
+          path="/books/:bookId"
           element={
             <ProtectedRoute>
-              <MainWorkspaceMockup />
+              <BookWorkspace />
             </ProtectedRoute>
           }
         />
-        <Route path="/books-collection" element={<BooksCollection />} />
         <Route path="/sign-in" element={session ? <Navigate to="/" replace /> : <Login />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </>
+    </Suspense>
   )
 }
 
