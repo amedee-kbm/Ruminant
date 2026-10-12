@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { fetchChapters, saveChapterList, updateChapter } from '../lib/booksApi'
+import { getSampleChapters, isSampleId, updateSampleChapter } from '../lib/sampleBooks'
 
 /** A book's chapters, updated locally as the user types and saved separately */
 export const useChapters = (bookId, userId) => {
@@ -7,9 +8,10 @@ export const useChapters = (bookId, userId) => {
   const [loading, setLoading] = useState(true)
 
   const reload = useCallback(async () => {
-    if (!bookId || !userId) return
+    const sample = isSampleId(bookId)
+    if (!bookId || (!userId && !sample)) return
     try {
-      setChapters(await fetchChapters(bookId, userId))
+      setChapters(sample ? getSampleChapters(bookId) : await fetchChapters(bookId, userId))
     } catch (err) {
       console.error('Error fetching chapters:', err)
     } finally {
@@ -27,8 +29,11 @@ export const useChapters = (bookId, userId) => {
 
   /** @throws if the database update fails */
   const saveChapter = useCallback(
-    (chapterId, fields) => updateChapter(chapterId, userId, fields),
-    [userId]
+    async (chapterId, fields) =>
+      isSampleId(bookId)
+        ? updateSampleChapter(chapterId, fields)
+        : updateChapter(chapterId, userId, fields),
+    [bookId, userId]
   )
 
   /**

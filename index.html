@@ -16,9 +16,53 @@
         document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
       } catch (e) {}
     </script>
+    <style>
+      /* Splash shown until React renders, and reused while the session loads (src/App.jsx) */
+      html,
+      body {
+        margin: 0;
+        background: #ffffff;
+      }
+      html.dark,
+      html.dark body {
+        background: #161615;
+      }
+      .splash {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+        font-size: 28px;
+        font-weight: 700;
+        color: #262626;
+      }
+      html.dark .splash {
+        color: #e8e6e3;
+      }
+      .splash span {
+        animation: splash-breathe 1.6s ease-in-out infinite;
+      }
+      @keyframes splash-breathe {
+        0%,
+        100% {
+          opacity: 0.35;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .splash span {
+          animation: none;
+        }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="splash" role="status" aria-label="Loading"><span>Ruminant</span></div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

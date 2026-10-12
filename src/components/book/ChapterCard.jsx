@@ -29,7 +29,17 @@ const StatusMark = ({ done, number }) => (
 )
 
 /** One chapter: a row that expands into its notes */
-const ChapterCard = ({ chapter, number, open, hasNext, onToggle, onNext, onChange, onSave }) => {
+const ChapterCard = ({
+  chapter,
+  number,
+  open,
+  hasNext,
+  onToggle,
+  onNext,
+  onChange,
+  onSave,
+  showSaveStatus = true,
+}) => {
   const notes = getNotes(chapter)
   const done = hasNotes(chapter)
 
@@ -92,7 +102,7 @@ const ChapterCard = ({ chapter, number, open, hasNext, onToggle, onNext, onChang
             minH="7em"
           />
           <HStack justify="space-between">
-            <SaveStatus autosave={autosave} />
+            {showSaveStatus ? <SaveStatus autosave={autosave} /> : <Box />}
             {hasNext && (
               <Button size="sm" variant="ghost" onClick={onNext}>
                 Next chapter

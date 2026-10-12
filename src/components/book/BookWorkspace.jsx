@@ -1,13 +1,13 @@
 import { useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router'
+import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router'
 import { Box, Button, Flex, Heading, HStack, Image, Text, VStack } from '@chakra-ui/react'
-import { Download, ListOrdered, Loader2, Pencil } from 'lucide-react'
+import { Download, ListOrdered, Loader2, Pencil, Sparkles } from 'lucide-react'
 
 import useAuth from '../../hooks/useAuth'
 import { useBook } from '../../hooks/useBook'
 import { useChapters } from '../../hooks/useChapters'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle'
-import { cleanTheme } from '../../constants/theme'
+import { accentButtonProps, cleanTheme } from '../../constants/theme'
 import { deleteBook } from '../../lib/booksApi'
 import {
   buildExportMarkdown,
@@ -15,12 +15,14 @@ import {
   hasAnythingToExport,
   hasNotes,
 } from '../../lib/bookNotes'
+import { isSampleId } from '../../lib/sampleBooks'
 import AppHeader from '../AppHeader'
 import BookPrompt from './BookPrompt'
 import ConfirmDialog from '../ConfirmDialog'
 import ChapterCard from './ChapterCard'
 import ChapterListEditor from './ChapterListEditor'
 import EditBookDialog from './EditBookDialog'
+import SignUpDialog from '../SignUpDialog'
 
 const Spinner = () => (
   <>
@@ -29,18 +31,47 @@ const Spinner = () => (
   </>
 )
 
+/** Says a sample's edits aren't kept, and points to signing up or adding a real book */
+const SampleBanner = ({ isGuest, onSignUp }) => (
+  <HStack
+    justify="space-between"
+    gap={3}
+    wrap="wrap"
+    mb={8}
+    px={4}
+    py={3}
+    borderRadius="lg"
+    bg={cleanTheme.canvasBg}
+  >
+    <HStack gap={3} minW={0}>
+      <Sparkles size={18} style={{ flexShrink: 0 }} />
+      <Text fontSize="sm">This is a sample book. Try writing in it; nothing here is saved.</Text>
+    </HStack>
+    {isGuest ? (
+      <Button size="sm" {...accentButtonProps} onClick={onSignUp}>
+        Sign up to add your own
+      </Button>
+    ) : (
+      <Button asChild size="sm" {...accentButtonProps}>
+        <RouterLink to="/">Add your own book</RouterLink>
+      </Button>
+    )}
+  </HStack>
+)
+
 /** One book: what you want from it, notes per chapter, and what you'll keep */
 const BookWorkspace = () => {
   const { bookId } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
   const userId = user?.id
+  const isSample = isSampleId(bookId)
 
   const { book, loading, saveDetails, updateBookLocally, saveBookFields } = useBook(bookId, userId)
   const chapterState = useChapters(bookId, userId)
   const { chapters, updateChapterLocally, saveChapter, saveList } = chapterState
 
-  // 'edit-details' | 'edit-chapters' | 'delete' | null
+  // 'edit-details' | 'edit-chapters' | 'delete' | 'sign-up' | null
   const [mode, setMode] = useState(null)
 
   useDocumentTitle(book?.title)
@@ -112,6 +143,8 @@ const BookWorkspace = () => {
       <AppHeader crumb={book.title} />
 
       <Box maxW={cleanTheme.columnWidth} mx="auto" px={4} py={{ base: 6, md: 10 }}>
+        {isSample && <SampleBanner isGuest={!user} onSignUp={() => setMode('sign-up')} />}
+
         <HStack gap={4} align="flex-start" mb={8}>
           {book.cover_url && (
             <Image src={book.cover_url} alt="" w="56px" borderRadius="sm" boxShadow="sm" />
@@ -128,10 +161,12 @@ const BookWorkspace = () => {
             </Heading>
             {book.author && <Text color={cleanTheme.placeholderText}>{book.author}</Text>}
             <HStack gap={2} mt={3} wrap="wrap">
-              <Button size="xs" variant="outline" onClick={() => setMode('edit-details')}>
-                <Pencil size={14} />
-                Edit details
-              </Button>
+              {!isSample && (
+                <Button size="xs" variant="outline" onClick={() => setMode('edit-details')}>
+                  <Pencil size={14} />
+                  Edit details
+                </Button>
+              )}
               <Button
                 size="xs"
                 variant="outline"
@@ -153,6 +188,7 @@ const BookWorkspace = () => {
             placeholder="I want to explore..."
             onChange={updateBookLocally}
             onSave={saveBookFields}
+            showSaveStatus={!isSample}
           />
         </Box>
 
@@ -181,10 +217,12 @@ const BookWorkspace = () => {
                 <Text fontSize="sm" color={cleanTheme.placeholderText}>
                   {doneCount} of {chapters.length} chapters have notes
                 </Text>
-                <Button size="xs" variant="ghost" onClick={() => setMode('edit-chapters')}>
-                  <ListOrdered size={14} />
-                  Edit chapters
-                </Button>
+                {!isSample && (
+                  <Button size="xs" variant="ghost" onClick={() => setMode('edit-chapters')}>
+                    <ListOrdered size={14} />
+                    Edit chapters
+                  </Button>
+                )}
               </HStack>
               <Box h="4px" bg={cleanTheme.canvasBg} borderRadius="full" overflow="hidden">
                 <Box
@@ -210,6 +248,7 @@ const BookWorkspace = () => {
                     onNext={() => openChapter(next.id)}
                     onChange={handleChange}
                     onSave={handleSave}
+                    showSaveStatus={!isSample}
                   />
                 )
               })}
@@ -225,6 +264,7 @@ const BookWorkspace = () => {
             placeholder="One or two sentences"
             onChange={updateBookLocally}
             onSave={saveBookFields}
+            showSaveStatus={!isSample}
           />
         </Box>
       </Box>
@@ -244,6 +284,7 @@ const BookWorkspace = () => {
         confirmLabel="Delete book"
         onConfirm={handleDelete}
       />
+      <SignUpDialog open={mode === 'sign-up'} onClose={() => setMode(null)} />
     </Box>
   )
 }

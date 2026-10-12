@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link as RouterLink } from 'react-router'
-import { Box, HStack, IconButton, Menu, Portal, Text } from '@chakra-ui/react'
+import { Box, Button, HStack, IconButton, Menu, Portal, Text } from '@chakra-ui/react'
 import { ChevronRight, CircleUser, LogOut, Moon, Sun } from 'lucide-react'
 
 import useAuth from '../hooks/useAuth'
@@ -27,9 +27,36 @@ const ColorModeButton = () => {
   )
 }
 
+/** The signed-in user's email and sign out */
+const AccountMenu = ({ email, onSignOut }) => (
+  <Menu.Root positioning={{ placement: 'bottom-end' }}>
+    <Menu.Trigger asChild>
+      <IconButton variant="ghost" size="sm" aria-label="Account">
+        <CircleUser size={18} />
+      </IconButton>
+    </Menu.Trigger>
+    <Portal>
+      <Menu.Positioner>
+        <Menu.Content minW="220px">
+          <Menu.ItemGroup>
+            <Menu.ItemGroupLabel fontWeight={400} color={cleanTheme.placeholderText}>
+              {email}
+            </Menu.ItemGroupLabel>
+          </Menu.ItemGroup>
+          <Menu.Separator />
+          <Menu.Item value="sign-out" onClick={onSignOut}>
+            <LogOut size={16} />
+            Sign out
+          </Menu.Item>
+        </Menu.Content>
+      </Menu.Positioner>
+    </Portal>
+  </Menu.Root>
+)
+
 /**
- * Sticky header shared by every signed-in page: wordmark (home), an optional breadcrumb,
- * page actions passed as children, and the account menu.
+ * Sticky header shared by every page but sign-in: wordmark (home), an optional breadcrumb,
+ * page actions passed as children, and the account menu (or a sign-in link for guests).
  */
 const AppHeader = ({ crumb, children }) => {
   const { user, signOut } = useAuth()
@@ -75,29 +102,13 @@ const AppHeader = ({ crumb, children }) => {
       <HStack gap={1} flexShrink={0}>
         {children}
         <ColorModeButton />
-        <Menu.Root positioning={{ placement: 'bottom-end' }}>
-          <Menu.Trigger asChild>
-            <IconButton variant="ghost" size="sm" aria-label="Account">
-              <CircleUser size={18} />
-            </IconButton>
-          </Menu.Trigger>
-          <Portal>
-            <Menu.Positioner>
-              <Menu.Content minW="220px">
-                <Menu.ItemGroup>
-                  <Menu.ItemGroupLabel fontWeight={400} color={cleanTheme.placeholderText}>
-                    {user?.email}
-                  </Menu.ItemGroupLabel>
-                </Menu.ItemGroup>
-                <Menu.Separator />
-                <Menu.Item value="sign-out" onClick={signOut}>
-                  <LogOut size={16} />
-                  Sign out
-                </Menu.Item>
-              </Menu.Content>
-            </Menu.Positioner>
-          </Portal>
-        </Menu.Root>
+        {user ? (
+          <AccountMenu email={user.email} onSignOut={signOut} />
+        ) : (
+          <Button asChild size="sm" variant="outline" ml={1}>
+            <RouterLink to="/sign-in">Sign in</RouterLink>
+          </Button>
+        )}
       </HStack>
     </HStack>
   )
